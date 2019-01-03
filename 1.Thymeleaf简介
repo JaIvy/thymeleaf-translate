@@ -1,0 +1,33 @@
+# Thymeleaf简介
+## 1.1 什么是Thymeleaf？
+&ensp;&ensp;Thymeleaf是一个现代的服务端Java模板引擎，它即支持web环境又支持独立环境，能够处理HTML，XML，JavaScript，Css甚至纯文本。<br/>
+&ensp;&ensp;Thymeleaf的主要目标是提供一个简洁并高可维护的创建模板的方式。为了实现这个目标，基于Natural Templates的概念，它将逻辑以一种不影响设计原型模板的方式注入到模板文件。这改善了设计上的交流并且架起设计团队和开发团队之间的桥梁。<br/>
+&ensp;&ensp;Thymeleaf也是一开始就按照Web标准设计的-尤其是HTML5-允许你创建完整验证模板。<br/>
+## 1.2 Thymeleaf能处理哪些模板？
+&ensp;&ensp;开箱即用，Thymeleaf允许你处理6种模板，每种模板都称作一个模板模式：<br/>
++ HTML
++ XML
++ TEXT
++ JAVASCRIPT
++ CSS
+  
+&ensp;&ensp;包含两种标记模板模式（HTML和XML），三种文本模板牧师（TEXT,JAVASCRIPT和CSS）和无操作模板模式。<br/>
+&ensp;&ensp;HTML模板模式允许任何种类的HTML输入，包括HTML5,HTML4和XHTML。将不进行校验或完好性检查，并且会尽可能的尊重模板代码/结构。<br/>
+&ensp;&ensp;XML模板模式允许XML输入。在这种情况下，代码要求是格式良好的-比如没有未关闭的标签，没有不用引号包围的属性-并且解析器在发现违反了良好格式时会抛出异常。注意这不会执行对DTD或XML Schema的验证。<br/>
+&ensp;&ensp;TEXT模板模式允许为非标记性质的模板使用一种特殊的语法。此类模板的示例可以是电子邮件文本或模板化的文档。注意HTML或者XML也能当做TEXT处理，在它们不会被解析为标记、标签、DOCTYPE、注释等等情况时，就会被视为纯文本。
+&ensp;&ensp;JAVASCRIPT模板模式允许在一个Thymeleaf应用中执行JavaScript文件。这意味着在JavaScript文件中可以像在HTML文件中那样使用模型数据，但是只能使用JavaScript特定的集成，如专门的逃逸或自然脚本。JAVASCRIPT模板模型被认为是一个 文本模型，因此使用与TEXT模板模式相同的特殊语法。<br/>
+&ensp;&ensp;CSS模板模式允许处理Thymeleaf应用中涉及的CSS文件。与JAVASCRIPT模式相似，CSS模板模式也是一个文本模型并且使用与TEXT模板模式的特殊处理语法。<br/>
+&ensp;&ensp;RAW模板模式根本不处理模板。这意味着它是将不受影响的资源（文件，URL响应等）添加到正在处理的模板。比如，HTML格式中外部和不受控制的资源可以包含在应用模板中，这些资源可能包含的任何Thymeleaf代码都不会被执行。<br/>
+## 1.3标准方言
+&ensp;&ensp;Thymeleaf是一个扩展性很强的模板引擎（实际上它可以被称做一个模板引擎框架），它允许你定义和自定义一个精细的模板处理方式。<br/>
+&ensp;&ensp;一个给标记应用一些逻辑的对象（一个标签，一些文本，一个注释或仅仅一个占位符）被称作一个处理器，并且一组这样的处理器-再加上一些额外的东西-就是方言的一般组成形式。Thymeleaf的核心库提供了一个叫做StandardDialect的方言，对大多数用户而言足以使用。<br/>
+&ensp;&ensp;*请注意，方言实际上可以没有处理器并可以完全由其他类型的工件组成，但处理器绝对是最常见的用例。*<br/>
+&ensp;&ensp;本教材涵盖了Standard Dialect，即使没有明确说明，下述页面中的每个属性和语法特性都是由该方言定义的。<br/>
+&ensp;&ensp;当然，用户如果想要定义自己的处理逻辑可以利用库的高级特性创建自己的方言（或者扩展标准方言）。Thymeleaf也支持同时使用多个方言的配置。<br/>
+&ensp;&ensp;*官方的thymeleaf-spring3和thymeleaf-spring4集成包都定义了一个SpringStandard Dialect的方言，它和Standard Dialect几乎一样，区别在于更好的适配了Spring Framework的一些特性的使用（例如，使用Spring Expression Language 或 使用SpringEL 代替 OGNL）。所以如果你正在使用Spring MVC，那么你从本教材中学习到的所有知识都可以用在你的Spring应用程序中。*<br/>
+&ensp;&ensp;Standard Dialect的大部分处理器都是属性处理器。这允许浏览器在处理前能正确的展示HTML模板文件，因为它们会忽略额外的属性。比如，当使用 JSP 标签库时可以包含一段不能被浏览器直接显示的代码：<br/>
+&ensp;&ensp;`<form:inputText name="userName" value="${user.name}" />`<br/>
+&ensp;&ensp;Thymeleaf Standard Dialect 允许我们使用如下代码达到相同效果：<br/>
+&ensp;&ensp;`<input type="text" name="userName" value="James Carrot" th:value="${user.name}" />`<br/>
+&ensp;&ensp;这不仅会让浏览器正确的展示，而且也允许我们指定（可选） 一个原型在浏览器静态打开时就会展示的value属性（在示例中是"James Carrot"），并且这个属性会在模板处理期间替换成${user.name}的计算结果。<br/>
+&ensp;&ensp;这会让设计师和开发人员在非常相似的模板文件上协作，并且会减少将静态原型转换为运行模板文件所需的工作。这种能力称作Natural Templating。<br/>
