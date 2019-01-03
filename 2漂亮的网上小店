@@ -1,0 +1,188 @@
+# 2.漂亮的网上小店
+## 2.1网上小店
+&ensp;&ensp;为了更好的解释使用Thymeleaf处理模板中涉及到的概念，教程会使用一个演示应用程序，可以从项目网站上下载。<br/>
+&ensp;&ensp;该演示程序是一个虚构的网上小店，会为我们提供许多场景来展示Thymeleaf的许多特性。<br/>
+&ensp;&ensp;首先，我们的应用程序需要一组简单的模型实体：产品通过产生订单出售给用户。我们也需要管理这些产品的评论。<br/>
+![](https://app.yinxiang.com/shard/s1/res/de9dbb92-3010-4b99-8e64-544446406127.png "类图")
+&ensp;&ensp;应用程序也包含一个简单的服务层，由Service对象组成并包含如下方法：<br/>
+``` 
+public class ProductService {
+    ...
+    public List<Product> findAll() {
+        return ProductRepository.getInstance().findAll();
+    }
+    public Product findById(Integer id) {
+        return ProductRepository.getInstance().findById(id);
+    }
+   
+}
+```
+&ensp;&ensp;在web层应用程序会有一个过滤器，他会根据请求的URL委托给被启用的Thymeleaf命令执行：
+```
+private boolean process(HttpServletRequest request, HttpServletResponse response)
+        throws ServletException {   
+    try {
+        // This prevents triggering engine executions for resource URLs
+        if (request.getRequestURI().startsWith("/css") ||
+                request.getRequestURI().startsWith("/images") ||
+                request.getRequestURI().startsWith("/favicon")) {
+            return false;
+        }
+       
+        /*
+        * Query controller/URL mapping and obtain the controller
+        * that will process the request. If no controller is available,
+        * return false and let other filters/servlets process the request.
+        */
+        IGTVGController controller = this.application.resolveControllerForRequest(request);
+        if (controller == null) {
+            return false;
+        }
+
+        /*
+        * Obtain the TemplateEngine instance.
+        */
+        ITemplateEngine templateEngine = this.application.getTemplateEngine();
+
+        /*
+        * Write the response headers
+        */
+        response.setContentType("text/html;charset=UTF-8");
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("Cache-Control", "no-cache");
+        response.setDateHeader("Expires", 0);
+
+        /*
+        * Execute the controller and process view template,
+        * writing the results to the response writer.
+        */
+        controller.process(
+                request, response, this.servletContext, templateEngine);
+       
+        return true;
+       
+    } catch (Exception e) {
+        try {
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        } catch (final IOException ignored) {
+            // Just ignore this
+        }
+        throw new ServletException(e);
+    }
+   
+}
+```
+&ensp;&ensp;IGTVGController 接口：
+```
+public interface IGTVGController {
+    public void process(
+            HttpServletRequest request, HttpServletResponse response,
+            ServletContext servletContext, ITemplateEngine templateEngine);   
+}
+```
+&ensp;&ensp;我们现在所要做的就是创建IGTVGController的接口实现，检索从服务层获取的数据并使用ITemplateEngine对象处理模板。
+<br/>
+&ensp;&ensp;最终，网站看起来是这个样子的：
+<br/>
+![](https://app.yinxiang.com/shard/s1/res/3f8d114c-8910-4f76-b481-45b23825fc5e.png "网站效果")
+&ensp;&ensp;不过首先让我们看看模板引擎是如何初始化的。
+## 2.2创建并配置模板引擎
+&ensp;&ensp;过滤器中的process(...)方法包含了下面这行：
+```
+ITemplateEngine templateEngine = this.application.getTemplateEngine();
+```
+&ensp;&ensp;这意味着GTVGApplication类负责创建并配置Thymeleaf应用程序中最重要的对象之一：TemplateEngine实例（实现了ITemplateEngine接口）
+<br/>
+&ensp;&ensp;org.thymeleaf.TemplateEngine对象被这样初始化：
+```
+public class GTVGApplication {
+    ...
+    private final TemplateEngine templateEngine;
+    ...
+      
+    public GTVGApplication(final ServletContext servletContext) {
+
+        super();
+
+        ServletContextTemplateResolver templateResolver =
+                new ServletContextTemplateResolver(servletContext);
+       
+        // HTML is the default mode, but we set it anyway for better understanding of code
+        templateResolver.setTemplateMode(TemplateMode.HTML);
+        // This will convert "home" to "/WEB-INF/templates/home.html"
+        templateResolver.setPrefix("/WEB-INF/templates/");
+        templateResolver.setSuffix(".html");
+        // Template cache TTL=1h. If not set, entries would be cached until expelled
+        templateResolver.setCacheTTLMs(Long.valueOf(3600000L));
+       
+        // Cache is set to true by default. Set to false if you want templates to
+        // be automatically updated when modified.
+        templateResolver.setCacheable(true);
+       
+        this.templateEngine = new TemplateEngine();
+        this.templateEngine.setTemplateResolver(templateResolver);
+       
+        ...
+
+    }
+
+}
+```
+&ensp;&ensp;有很多方式配置一个TemplateEngine对象，但目前为止这短短几行代码已经足够教会我们所需的步骤了。
+<br/>
+### 模板解释器
+---
+&ensp;&ensp;让我们从模板解释器开始：
+```
+ServletContextTemplateResolver templateResolver =
+        new ServletContextTemplateResolver(servletContext);
+```
+&ensp;&ensp;模板解释器实现了Thymeleaf Api 的org.thymeleaf.templateresolver.ItemplateResolver接口：
+```
+public interface ITemplateResolver {
+
+    ...
+ 
+    /*
+    * Templates are resolved by their name (or content) and also (optionally) their
+    * owner template in case we are trying to resolve a fragment for another template.
+    * Will return null if template cannot be handled by this template resolver.
+    */
+    public TemplateResolution resolveTemplate(
+            final IEngineConfiguration configuration,
+            final String ownerTemplate, final String template,
+            final Map<String, Object> templateResolutionAttributes);}
+```
+&ensp;&ensp;这些对象负责决定我们的模板如何被访问，并且在GTVG应用中，org.thymeleaf.templateresolver.ServletContextTemplateResolver表示我们准备从Servlet Context中检索模板文件作为资源。Servlet Context是一个应用程序范围的javax.servlet.ServletContext对象，它存在与每个Java web应用，并且从Web应用程序根目录解析资源。
+<br/>
+&ensp;&ensp;但是模板解析器还远不止这些内容，我们还可以给它设定一些配置参数。首先是模板模式：
+```
+templateResolver.setTemplateMode(TemplateMode.HTML);
+```
+&ensp;&ensp;HTML是ServletContextTemplateResolver的默认模板模式，但是显式的设置能清楚的了解代码运行的方式。
+```
+templateResolver.setPrefix("/WEB-INF/templates/");
+templateResolver.setSuffix(".html");
+```
+&ensp;&ensp;prefix和suffix改变我们将传递给引擎的模板名称，以获得要使用的真实资源名称。<br/>
+&ensp;&ensp;使用该配置，名为"product/list"的模板会对应到：
+```
+servletContext.getResourceAsStream("/WEB-INF/templates/product/list.html")
+```
+&ensp;&ensp;已解析的模板在缓存中的生存时间在模板解析器中通过可选属性cacheTTLMs进行配置。
+```
+templateResolver.setCacheTTLMs(3600000L);
+```
+&ensp;&ensp;一个模板如果达到了缓存最大容量并且是当前缓存最旧的条目也会在TTL到达之前被缓存释放。<br/>
+&ensp;&ensp;缓存行为和容量可以通过用户实现ICacheManager接口进行定义或者修改StandardCacheManager对象来管理默认缓存。<br/>
+&ensp;&ensp;关于模板解析器还有很多东西要学，但是现在让我们看看TemplateEngine对象的创建。<br/>
+### 模板引擎
+---
+&ensp;&ensp;模板引擎对象是org.thymeleaf.ITemplateEngine接口的实现。其中的一个实现是由Thymeleaf核心提供的：org.thymeleaf.TemplateEngine，我们在这里创建它的一个实例：
+```
+templateEngine = new TemplateEngine();
+templateEngine.setTemplateResolver(templateResolver);
+```
+&ensp;&ensp;这是不是很简单？我们需要做的就是创建一个实例并给它设置模板解释器。<br/>
+&ensp;&ensp;一个模板解释器是一个TemplateEngine所需的唯一参数，尽管还有很多其他内容会在后面提到（消息解析器，缓存容量等）。就现在而言，这就是我们所需要的。<br/>
+&ensp;&ensp;我们的模板引擎已经就绪，我们可以开始使用Thymeleaf创建我们的页面。<br/>
